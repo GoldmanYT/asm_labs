@@ -1,4 +1,4 @@
-set name=main
+set name=lab2
 tasm %name%.asm
 pause
 tlink %name%.obj
