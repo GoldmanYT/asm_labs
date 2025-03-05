@@ -15,6 +15,11 @@ out_sym         macro   sym
 code            segment
 
 print           macro
+                local   number
+                local   not_zero
+                local   next_digit
+                local   out_num
+                local   end_p
                 push    ax
                 push    bx
                 push    cx
@@ -47,6 +52,7 @@ end_p:          pop     dx
                 pop     bx
                 pop     ax
                 endm
+
 _start:         assume  cs:code,ss:sseg
                 mov     al,-127
                 print
