@@ -1,5 +1,5 @@
-set name=lab2p
-tasm %name%.asm
+set name=lab3
+tasm %name%.asm /l
 pause
 tlink %name%.obj
 pause

@@ -55,7 +55,6 @@ exit:           pop     es
                 pop     si
                 pop     cx
                 pop     bx
-                mov     sp,bp
                 pop     bp
                 ret
 Delete          endp

@@ -72,6 +72,10 @@ _start:         mov     ax,data
                 mov     al,Len1
                 push    ax
                 call    Delete
+                pop     ax
+                pop     ax
+                pop     ax
+                pop     ax
 
                 lea     dx,msg2
                 call    print_msg

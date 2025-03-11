@@ -1,62 +1,70 @@
-sseg            segment
-                dw      256 dup(?)
-sseg            ends
-
-out_sym         macro   sym
-                push    ax
-                push    dx
-                mov     ah,02h
-                mov     dl,sym
-                int     21h
-                pop     dx
-                pop     ax
-                endm
-
 code            segment
+                assume  cs:code,ds:code
+                public  print_dec
 
-print           macro
-                local   number
-                local   not_zero
-                local   next_digit
-                local   out_num
-                local   end_p
+print_dec       proc
+                push    bp
+                mov     bp,sp
                 push    ax
                 push    bx
                 push    cx
                 push    dx
-                cmp     al,0
-                jns     number
-                out_sym '-'
-                neg     al
-number:         jnz     not_zero
-                out_sym '0'
-                jmp     end_p
-not_zero:       mov     dx,10
-                xor     cx,cx
-                and     ax,0ffh
-next_digit:     idiv    dl
-                add     ah,30h
-                mov     bl,ah
-                and     bx,0ffh
-                push    bx
-                inc     cx
-                and     ax,0ffh
-                cmp     al,0
-                jnz     next_digit
-out_num:        pop     bx
-                out_sym bl
-                dec     cx
-                jnz     out_num
-end_p:          pop     dx
+                push    di
+                
+                mov     ax,[bp+4]
+                mov     bx,10000
+                mov     cx,5
+
+                cmp     ax,0
+                jg      zeros
+
+                push    ax
+                mov     dl,'-'
+                mov     ah,02h
+                int     21h
+                pop     ax
+                neg     ax
+                xor     dx,dx
+
+zeros:          div     bx
+                push    dx
+                xor     dx,dx
+                mov     di,10
+                xchg    ax,bx
+                div     di
+                xchg    ax,bx
+                cmp     ax,0
+                jne     output
+                pop     ax
+                loop    zeros
+
+                mov     dl,30h
+                mov     ah,02h
+                int     21h
+                jmp     exit
+
+number:         div     bx
+                push    dx
+                xor     dx,dx
+                mov     di,10
+                xchg    ax,bx
+                div     di
+                xchg    ax,bx
+output:         add     al,30h
+                mov     dl,al
+                mov     ah,02h
+                int     21h
+                xor     dx,dx
+                pop     ax
+                loop    number
+
+exit:           pop     di
+                pop     dx
                 pop     cx
                 pop     bx
                 pop     ax
-                endm
-
-_start:         assume  cs:code,ss:sseg
-                mov     al,-127
-                print
-                mov     ax,4c00h
-                int     21h                
+                pop     bp
+                ret
+print_dec       endp
 code            ends
-                end     _start
+                end
