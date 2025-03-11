@@ -1,19 +1,6 @@
-sseg            segment stack   'stack'
-                dw      256 dup(?)
-sseg            ends
-
-
-data            segment
-msg1            db      "Original string: $"
-msg2            db      0dh,0ah,"Converted string: $"
-S1              db      14,"Hello, World!$"
-Start1          db      6
-Len1            db      7
-data            ends
-
-
 code            segment
-                assume  cs:code,ss:sseg,ds:data
+                assume  cs:code,ds:code
+                public  Delete
 
 ; procedure Delete(var S: string; Start, Len: byte)
 ; Удаляет в строке S символы с позиции Start и длинной Len
@@ -47,6 +34,9 @@ Len             equ     byte ptr[bp+4]
                 mov     si,cx           ; si = Len
                 mov     cl,es:[bx]      ; cl = |S|
 
+                cmp     di,cx           ; Start > |S|
+                ja      exit            ; exit
+
                 sub     cx,di           ; cx = |S| - Start
                 add     cx,1            ; cx = |S| - Start + 1
                 cmp     si,cx           ; Len ? |S| - Start + 1
@@ -58,9 +48,9 @@ del:            sub     es:[bx],si      ; |S| = |S| - Len
                 add     si,di           ; si = Start + Len
                 add     di,bx           ; di = Start + addr(S)
                 add     si,bx           ; si = Start + Len + addr(S)
-                rep movs byte ptr es:[si],[di]
+                rep movs byte ptr [si],[di]
 
-                pop     es
+exit:           pop     es
                 pop     di
                 pop     si
                 pop     cx
@@ -69,43 +59,5 @@ del:            sub     es:[bx],si      ; |S| = |S| - Len
                 pop     bp
                 ret
 Delete          endp
-
-
-print_msg       proc
-                push    ax
-                mov     ah,09h
-                int     21h
-                pop     ax
-                ret
-print_msg       endp
-
-
-_start:         mov     ax,data
-                mov     ds,ax
-
-                lea     dx,msg1
-                call    print_msg
-
-                lea     dx,S1
-                call    print_msg
-
-                mov     ax,seg S1
-                push    ax
-                mov     ax,offset S1
-                push    ax
-                mov     al,Start1
-                push    ax
-                mov     al,Len1
-                push    ax
-                call    Delete
-
-                lea     dx,msg2
-                call    print_msg
-
-                lea     dx,S1
-                call    print_msg
-
-                mov     ax,4c00h
-                int     21h
 code            ends
-                end     _start
+                end
