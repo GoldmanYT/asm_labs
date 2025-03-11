@@ -5,10 +5,16 @@ sseg            ends
 
 data            segment
 msg1            db      "Original string: $"
-msg2            db      0dh,0ah,"Converted string: $"
+msg2            db      0Dh,0Ah,"Converted string: $"
 S1              db      9,"My String"
-Start1          db      10
+Start1          db      3
 Len1            db      5
+S2              db      9,"Assembler"
+Start2          db      10
+Len2            db      5
+S3              db      13,"Hello, World!"
+Start3          db      6
+Len3            db      255
 data            ends
 
 
