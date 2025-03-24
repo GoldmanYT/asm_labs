@@ -4,11 +4,11 @@ cseg            segment
 t               dd      2.0
 res             dd      ?
 n1_4            dd      0.25
-n1_5            dd      0.2
-n1_9            dd      0.11111111
 n2              dd      2.0
 n3              dd      3.0
 n4              dd      4.0
+n5              dd      5.0
+n9              dd      9.0
 
 ; Макрокоманда возведения в степень: x^y
 ; y = st(1)
@@ -36,8 +36,10 @@ _start:         mov     ax,cs
                 fdivp           ; cos^4(t) / 4
                 fsubp           ; 1 - cos^4(t) / 4
                 fpow            ; (1 - cos^4(t) / 4) ^ (1/4)
-
-                fld     n1_5    ; 1/5
+                
+                fld1            ; 1
+                fld     n5      ; 5
+                fdivp           ; 1/5
                 fld1            ; 1
                 fld     t       ; t
                 fld1            ; 1
@@ -47,7 +49,9 @@ _start:         mov     ax,cs
                 faddp           ; 1 + arctg(t) / 2
                 fpow            ; (1 + arctg(t) / 2) ^ (1/5)
 
-                fld     n1_9    ; 1/9
+                fld1            ; 1
+                fld     n9      ; 9
+                fdivp           ; 1/9
                 fld1            ; 1
                 fld     n3      ; 3
                 fld     t       ; t
