@@ -7,7 +7,7 @@ data            segment
 msg1            db      "Original string: $"
 msg2            db      0Dh,0Ah,"Converted string: $"
 S1              db      9,"My String"
-Start1          db      3
+Start1          db      2
 Len1            db      5
 S2              db      9,"Assembler"
 Start2          db      10
@@ -72,10 +72,6 @@ _start:         mov     ax,data
                 mov     al,Len1
                 push    ax
                 call    Delete
-                pop     ax
-                pop     ax
-                pop     ax
-                pop     ax
 
                 lea     dx,msg2
                 call    print_msg

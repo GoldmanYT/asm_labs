@@ -56,7 +56,7 @@ exit:           pop     es
                 pop     cx
                 pop     bx
                 pop     bp
-                ret
+                ret     8
 Delete          endp
 code            ends
                 end
