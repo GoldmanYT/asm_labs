@@ -1,8 +1,9 @@
+set folder=lab2
 set main=lab2m
 set func=lab2p
-tasm %func%.asm /l
+tasm %folder%\%func%.asm /l
 pause
-tasm %main%.asm /l
+tasm %folder%\%main%.asm /l
 pause
 tlink %main%+%func%
 pause

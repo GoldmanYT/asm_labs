@@ -1,7 +1,9 @@
 cseg            segment
                 assume  cs:cseg,ds:cseg
                 .386
-t               dd      2.0
+t               dd      0.0
+; t               dd      1.0
+; t               dd      2.0
 res             dd      ?
 n1_4            dd      0.25
 n2              dd      2.0
@@ -36,7 +38,7 @@ _start:         mov     ax,cs
                 fdivp           ; cos^4(t) / 4
                 fsubp           ; 1 - cos^4(t) / 4
                 fpow            ; (1 - cos^4(t) / 4) ^ (1/4)
-                
+
                 fld1            ; 1
                 fld     n5      ; 5
                 fdivp           ; 1/5
