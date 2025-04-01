@@ -21,6 +21,7 @@ flag		equ	dl		; флаг начала нового слова
 
 		mov	esi,s
 		xor	ans,ans		; обнуление ответа
+		mov	flag,1		; флаг равен 1
 		cld			; индексы строк++
 
 begin:		lodsb
