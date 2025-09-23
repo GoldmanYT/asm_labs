@@ -86,12 +86,13 @@ ex13		Idt_Descriptor<offset ex13_proc,cs_code,0,10000111b,0>
 ex14		Idt_Descriptor<offset ex14_proc,cs_code,0,10000111b,0>
 ex15		Idt_Descriptor<offset ex15_proc,cs_code,0,10000111b,0>
 ex16		Idt_Descriptor<offset ex16_proc,cs_code,0,10000111b,0>
-Idt_Descriptor	22	dup(<>)
+		Idt_Descriptor	22 dup(<>)
 Int39		Idt_Descriptor<offset int10_proc,cs_code,0,10000110b,0>
-Idt_Leng	equ	$ - Idt		; Длина таблицы IDT
+Idt_Leng	equ	$ - Idt			; Длина таблицы IDT
 Mess		db	'Protected Mode$'
 Len		dw	14d
 Gate_Failure	db	"Error open A20$"
+
 Main:		FillDescr cs, Gdt, Gdt1		; Формирование
 						; 32-разрядного адреса из CS:GDT и запись его
 						; в дескриптор с номером Gdt_Desc
@@ -120,26 +121,26 @@ A20_Opened:	lea	di, Real_CS		; Сохранение сегмента
 		mov	word ptr cs:[di],cs	; кода для перехода в реальный режим
 		lgdt	Gdt1			; Загрузка GDTR
 		lidt	Idt_Pointer		; Загрузка IDTR
-		mov	eax,cr0			; Переходим в защищенный
-		or	eax,1			; режим, устанавливая
-		mov	cr0,eax			; бит 0 в регистре CR0
+		mov	eax, cr0		; Переходим в защищенный
+		or	eax, 1			; режим, устанавливая
+		mov	cr0, eax		; бит 0 в регистре CR0
 		db	0EAh			; Дальний переход
 		dw	offset Protect		; с непосредственным
 		dw	Cs_Code			; операндом
 
 ; Работа в защищенном режиме
-Protect:	mov ax, Cs_Data
-		mov ss,ax ; Регистры DS, ES и SS
-		mov ds,ax ; содержат селектор
-		mov es,ax ; сегмента Cs_Data
-		call My_Proc; Вызов рабочей процедуры
+Protect:	mov	ax, Cs_Data
+		mov	ss, ax		; Регистры DS, ES и SS
+		mov	ds, ax		; содержат селектор
+		mov	es, ax		; сегмента Cs_Data
+		call	My_Proc		; Вызов рабочей процедуры
 		cli
-		mov eax,cr0 ; Переходим в реальный
-		and eax,0FFFEh ; режим, сбрасывая бит 0
-		mov cr0,eax ; регистра CR0
-		db 0EAh ; Дальний переход с
-		dw offset Real ; непосредственным
-Real_CS		dw ? ; операндом
+		mov	eax, cr0	; Переходим в реальный
+		and	eax, 0FFFEh	; режим, сбрасывая бит 0
+		mov	cr0, eax	; регистра CR0
+		db	0EAh		; Дальний переход с
+		dw	offset Real	; непосредственным
+Real_CS		dw	?		; операндом
 
 ; Работа в реальном режиме.
 Real:		lidt	Idt_Real	; Загружаем регистр IDTR
@@ -150,7 +151,7 @@ Real:		lidt	Idt_Real	; Загружаем регистр IDTR
 		mov	ah, Disable_Bit20	; Закрытие адресной
 		call	Gate_A20		; линии A20
 		sti				; Разрешение прерываний
-		int	20h ; Выход в DOS
+		int	20h		; Выход в DOS
 ex0_proc:	iret			; Обработчики особых
 ex1_proc:	iret			; ситуаций
 ex2_proc:	iret			; Здесь установлены
@@ -231,7 +232,7 @@ Int10_Proc	proc	Near		; Обработчик прерывания
 		mov	cl, dh		; CL = колонка
 		sal	cl, 1		; CL = CL*2
 		xor	dh, dh		; DX = строка
-		imul	dx, 160d	; Умножаем на число байт в строке
+		imul	dx, 160		; Умножаем на число байт в строке
 		add	dx, cx		; Прибавляем смещение в строке
 					; Результат: DX = смещение в видеопамяти
 		push	Video_Desc
@@ -264,7 +265,7 @@ MY_PROC		proc
 		mov	ds, ax		; DS - сегмент данных
 		lea	bx, Mess	; Адрес сообщения
 		mov	dx, 200Bh	; Координаты вывода
-		int	39d		; Вывод строки на экран
+		int	39		; Вывод строки на экран
 		pop	es
 		popa
 		ret
@@ -276,7 +277,7 @@ MY_PROC		endp
 ; Вход : ES - селектор дескриптора текстового
 ; видеобуфера, DH - атрибут.
 ; **************************************************
-PAINT_SCREEN	proc
+Paint_Screen	proc
 		push	cx si di es
 		mov	cx, 80 * 25	; Размер видеопамяти (слов)
 		xor	si, si		; SI и DI установим на
@@ -291,7 +292,7 @@ Paint1:		lodsw			; Увеличиваем смещение
 					; символа на экране
 		pop	es di si cx
 		ret
-PAINT_SCREEN	endp
+Paint_Screen	endp
 Cseg_Leng	equ	$		; Длина сегмента Cseg
 cseg		ends
 		end	Start

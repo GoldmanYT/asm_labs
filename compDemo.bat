@@ -1,7 +1,6 @@
 set compiler=tasm
 set linker=tlink
 set debugger=td
-set debug=1
 set name=demo
 set folder=lab6
 
