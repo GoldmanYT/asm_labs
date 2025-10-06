@@ -37,6 +37,31 @@ FILLDESCR	macro	Seg_Addr, Offset_Addr, Descr
 		mov	&Descr.Base_Top_Byte, ch
 		endm
 
+; Макро для занесения значения регистра reg в строку dest
+fillRegInfo	macro	reg, dest
+		local	cycle, correct
+		pushad
+		
+		std
+		mov	edx, reg
+		mov	ecx, 8
+		lea	edi, dest
+		add	edi, strOffset
+
+cycle:		mov	eax, edx
+		and	eax, 0Fh
+		add	al, '0'
+		cmp	al, '9'
+		jbe	correct
+		add	al, 'A' - '9' - 1
+correct:	stosb
+		shr	edx, 4
+		loop	cycle
+
+		cld
+		popad
+		endm
+
 cseg		SEGMENT Para USE16 public 'code'
 assume		cs: cseg, ds: cseg
 		org	100h
@@ -88,17 +113,18 @@ ex15		Idt_Descriptor<offset ex15_proc,cs_code,0,10000111b,0>
 ex16		Idt_Descriptor<offset ex16_proc,cs_code,0,10000111b,0>
 		Idt_Descriptor	10	dup(<>)
 ex27		Idt_Descriptor<offset ex27_proc,cs_code,0,10000111b,0>
-		Idt_Descriptor	10	dup(<>)
+		Idt_Descriptor	11	dup(<>)
 Int39		Idt_Descriptor<offset int10_proc,cs_code,0,10000110b,0>
 Idt_Leng	equ	$ - Idt			; Длина таблицы IDT
 
-strOffset	dw	6
-eaxInfo		db	'EAX = ????????$'
-ebxInfo		db	'EBX = ????????$'
-ecxInfo		db	'ECX = ????????$'
-edxInfo		db	'EDX = ????????$'
-esiInfo		db	'ESI = ????????$'
-ediInfo		db	'EDI = ????????$'
+strOffset	dd	15
+eaxInfo		db	'EAX = 0x????????$'
+ebxInfo		db	'EBX = 0x????????$'
+ecxInfo		db	'ECX = 0x????????$'
+edxInfo		db	'EDX = 0x????????$'
+esiInfo		db	'ESI = 0x????????$'
+ediInfo		db	'EDI = 0x????????$'
+cr0Info		db	'CR0 = 0x????????$'
 
 Len		dw	14
 Gate_Failure	db	'Error open A20$'
@@ -144,7 +170,9 @@ Protect:	mov	ax, Cs_Data
 		mov	ds, ax		; содержат селектор
 		mov	es, ax		; сегмента Cs_Data
 
-		mov	dx, 0101h	; координаты левого верхнего угла вывода
+		mov	dl, 8		; строка = 8
+		mov	dh, 31		; колонка = 31
+		; mov	dx, 0101h	; координаты левого верхнего угла вывода
 		int	27		; Вызов прерывания
 
 		cli
@@ -193,17 +221,62 @@ ex16_proc:	iret
 ; 	DL - строка экрана
 ; 	DH - колонка экрана.
 ; **************************************************
-ex27_proc:	push	es
+ex27_proc:	mov	eax, 0ABCDEF12h
+		fillRegInfo eax, eaxInfo
+		fillRegInfo ebx, ebxInfo
+		fillRegInfo ecx, ecxInfo
+		fillRegInfo edx, edxInfo
+		fillRegInfo esi, esiInfo
+		fillRegInfo edi, ediInfo
+		fillRegInfo cr0, cr0Info
+
+		push	es
 		push	Video_Desc
 		pop	es		; ES = Video_Desc
-		push	dx
-		mov	dh, 0fh		; очищаем экран
+		push	dx		; сохраняем DX
+		mov	dh, 0Fh		; очищаем экран
 		call	Paint_Screen
-
-		pop	dx
-		mov	ax, Cs_Data
+		pop	dx		; восстанавливаем DX
+		
+		mov	ax, Cs_Data	; вывод значения EAX
 		mov	ds, ax
 		lea	bx, eaxInfo
+		int	39
+		
+		inc	dl		; переход к след. строке
+		mov	ax, Cs_Data	; вывод значения EBX
+		mov	ds, ax
+		lea	bx, ebxInfo
+		int	39
+		
+		inc	dl		; переход к след. строке
+		mov	ax, Cs_Data	; вывод значения ECX
+		mov	ds, ax
+		lea	bx, ecxInfo
+		int	39
+		
+		inc	dl		; переход к след. строке
+		mov	ax, Cs_Data	; вывод значения EDX
+		mov	ds, ax
+		lea	bx, edxInfo
+		int	39
+		
+		inc	dl		; переход к след. строке
+		mov	ax, Cs_Data	; вывод значения ESI
+		mov	ds, ax
+		lea	bx, esiInfo
+		int	39
+		
+		inc	dl		; переход к след. строке
+		mov	ax, Cs_Data	; вывод значения EDI
+		mov	ds, ax
+		lea	bx, ediInfo
+		int	39
+		
+		inc	dl		; переход к след. строке
+		mov	ax, Cs_Data	; вывод значения EDI
+		mov	ds, ax
+		lea	bx, cr0Info
 		int	39
 
 		pop	es
