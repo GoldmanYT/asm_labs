@@ -4,13 +4,13 @@ include		incfile.inc
 		.model	flat, stdcall
 
 .const		
-mesEnterFile	db	'Enter filename: '
+mesEnterFile	db	'Entered filename: '
 mesEnterFileLen	dd	$ - mesEnterFile
 
-mesSuccess	db	'File attribute has been set', 0Ah
+mesSuccess	db	0Ah, 'File attribute has been set', 0Ah
 mesSuccessLen	dd	$ - mesSuccess
 
-mesFail		db	'Error! File attribute has not been set', 0Ah
+mesFail		db	0Ah, 'Error! File attribute has not been set', 0Ah
 mesFailLen	dd	$ - mesFail
 
 endl		dd	1, 0, 800h, 0
@@ -19,27 +19,47 @@ endl		dd	1, 0, 800h, 0
 tmp		dd	?
 inputHandle	dd	?
 outputHandle	dd	?
-filename	db	100h dup(0)
+filenamePtr	dd	?
+filenameLen	dd	?
 
 .code
-_start:		call	GetStdHandle, STD_INPUT_HANDLE	; получаем HANDLE ввода
+_start:		call	GetStdHandle, STD_INPUT_HANDLE	; получаем HANDLE буфера ввода
 		mov	inputHandle, eax
 
-		call	GetStdHandle, STD_OUTPUT_HANDLE	; получаем HANDLE вывода
+		call	GetStdHandle, STD_OUTPUT_HANDLE	; получаем HANDLE буфера вывода
 		mov	outputHandle, eax
 
 		call	WriteConsole, outputHandle, offset mesEnterFile, mesEnterFileLen, offset tmp, 0
 
-		call	ReadConsole, inputHandle, offset filename, 255, offset tmp, offset endl
-		
-		; необходимо удалить перевод строки и возврат каретки
-		mov	al, 0Dh
-		mov	ecx, 256
-		mov	edi, offset filename
-		repne	scasb
-		mov	[edi - 1], 0
+		call	GetCommandLine
 
-		call	SetFileAttributes, offset filename, FILE_ATTRIBUTE_READONLY
+		; поиск конца строки
+		cld
+		mov	ecx, -1
+		mov	edi, eax
+		mov	al, 0
+		repne	scasb
+		dec	edi
+		mov	filenameLen, edi
+
+		std
+		mov	ecx, -1
+		mov	al, ' '
+		repne	scasb
+
+		cld
+		add	edi, 2
+		sub	filenameLen, edi
+		mov	filenamePtr, edi
+
+		call	WriteConsole, outputHandle, edi, filenameLen, offset tmp, 0
+		
+		call	GetFileAttributes, filenamePtr
+		test	eax, eax
+		jz	err			; EAX = 0, то произошла ошибка
+
+		or	eax, FILE_ATTRIBUTE_HIDDEN
+		call	SetFileAttributes, filenamePtr, eax
 		test	eax, eax
 		jz	err			; EAX = 0, то произошла ошибка
 		
@@ -49,7 +69,7 @@ _start:		call	GetStdHandle, STD_INPUT_HANDLE	; получаем HANDLE ввод�
 
 err:		call	WriteConsole, outputHandle, offset mesFail, mesFailLen, offset tmp, 0
 
-exit:		call	ReadConsole, inputHandle, offset filename, 255, offset tmp, offset endl
+exit:		call	ReadConsole, inputHandle, offset tmp, 255, offset tmp, offset endl
 		call	ExitProcess, 0
 		ends
 		end	_start
