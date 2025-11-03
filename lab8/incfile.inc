@@ -5,7 +5,6 @@ includelib	../import32.lib
 		extrn	GetStdHandle: near
 		extrn	WriteConsoleA: near
 		extrn	ReadConsoleA: near
-		extrn	StrTrimA: near
 		extrn	GetCommandLineA: near
 
 SetFileAttributes	equ	SetFileAttributesA
@@ -16,6 +15,5 @@ STD_INPUT_HANDLE	equ	-10
 STD_OUTPUT_HANDLE	equ	-11
 
 ReadConsole	equ	ReadConsoleA
-StrTrim		equ	StrTrimA
 GetCommandLine	equ	GetCommandLineA
 GetFileAttributes	equ	GetFileAttributesA
