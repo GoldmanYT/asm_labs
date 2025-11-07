@@ -6,6 +6,8 @@ includelib	../import32.lib
 		extrn	ReadConsoleInputA: near
 		extrn	SetConsoleCursorPosition: near
 		extrn	_wsprintfA: near
+		extrn	GetConsoleScreenBufferInfo: near
+		extrn	FillConsoleOutputCharacterA: near
 
 WriteConsole		equ	WriteConsoleA
 STD_INPUT_HANDLE	equ	-10
@@ -13,8 +15,9 @@ STD_OUTPUT_HANDLE	equ	-11
 
 ReadConsole	equ	ReadConsoleA
 GetCommandLine	equ	GetCommandLineA
-ReadConsoleInput equ	ReadConsoleInputA
+ReadConsoleInput	equ	ReadConsoleInputA
 wsprintf	equ	_wsprintfA
+FillConsoleOutputCharacter	equ	FillConsoleOutputCharacterA
 
 KEY_EVENT			equ	00001h
 MOUSE_EVENT			equ	00002h
@@ -57,3 +60,18 @@ KEY_EVENT_RECORD	ends
 WINDOW_BUFFER_SIZE_RECORD	struc
 dwSize				COORD	<>
 WINDOW_BUFFER_SIZE_RECORD	ends
+
+SMALL_RECT	struc
+Left		dw	?
+Top		dw	?
+Right		dw	?
+Bottom		dw	?
+SMALL_RECT	ends
+
+CONSOLE_SCREEN_BUFFER_INFO	struct
+dwSize				COORD	<>
+dwCursorPosition		COORD	<>
+wAttributes			dw	?
+srWindow			SMALL_RECT	<>
+dwMaximumWindowSize		COORD	<>
+CONSOLE_SCREEN_BUFFER_INFO	ends

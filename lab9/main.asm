@@ -5,17 +5,17 @@ include		incfile.inc
 
 .const
 endl		dd	1, 0, 800h, 0
-text_right_alt	db	'Right alt'
-text_left_alt	db	'Left alt'
-text_right_ctrl	db	'Right ctrl'
-text_left_ctrl	db	'Left ctrl'
-text_shift	db	'Shift'
-text_numlock	db	'NumLock'
-text_scrolllock	db	'ScrollLock'
-text_capslock	db	'CapsLock'
-text_pressed	db	'pressed'
-text_released	db	'released'
-fmt		db	'%s: %s'
+text_right_alt	db	'Right alt', 0
+text_left_alt	db	'Left alt', 0
+text_right_ctrl	db	'Right ctrl', 0
+text_left_ctrl	db	'Left ctrl', 0
+text_shift	db	'Shift', 0
+text_numlock	db	'NumLock', 0
+text_scrolllock	db	'ScrollLock', 0
+text_capslock	db	'CapsLock', 0
+text_pressed	db	'pressed', 0
+text_released	db	'released', 0
+fmt		db	'%s: %s', 0
 
 text_array	dd	offset text_right_alt, \
 			offset text_left_alt, \
@@ -26,24 +26,22 @@ text_array	dd	offset text_right_alt, \
 			offset text_scrolllock, \
 			offset text_capslock
 
+HomePos		COORD	<0, 0>
+
 .data
 tmp		dd	?
 inputHandle	dd	?
 outputHandle	dd	?
 
-RightAltDown	db	0
-LeftAltDown	db	0
-RightCtrlDown	db	0
-LeftCtrlDown	db	0
-ShiftDown	db	0
-NumLockDown	db	0
-ScrollLockDown	db	0
-CapsLockDown	db	0
+key_array	db	8 dup(0)
 EscapeDown	db	0
 
+ConsoleInfo	CONSOLE_SCREEN_BUFFER_INFO	<>
+
+messageLen	dd	?
 messageBuffer	db	256 dup(0)
 
-ConsoleSize	COORD	<120, 30>
+ConsoleSize	COORD	<>
 CursorPosition	COORD	<>
 
 eventBuffer	INPUT_RECORD	256 dup(<>)
@@ -81,6 +79,12 @@ _start:		call	GetStdHandle, STD_INPUT_HANDLE	; получаем HANDLE буфе�
 		call	GetStdHandle, STD_OUTPUT_HANDLE	; получаем HANDLE буфера вывода
 		mov	outputHandle, eax
 
+		call	GetConsoleScreenBufferInfo, outputHandle, offset ConsoleInfo
+		mov	ax, ConsoleInfo.dwSize.X
+		mov	ConsoleSize.X, ax
+		mov	ax, ConsoleInfo.dwSize.Y
+		mov	ConsoleSize.Y, ax
+
 begin_while_esc: mov	al, EscapeDown
 		test	al, al
 		jnz	exit
@@ -96,39 +100,30 @@ begin_for_event: cmp	cx, eventNum
 		mov	di, [esi]	; EventType
 
 case_key:	test	di, KEY_EVENT
-		jne	case_wnd_size
+		jz	case_wnd_size
 		mov	eax, [esi + 4 + 12]	; dwControlKeyState
-		mov	RightAltDown, al
-		or	RightAltDown, 1
+
+		xor	ebx, ebx
+		mov	edi, offset key_array
+
+begin_for_key:	cmp	ebx, 8
+		jae	end_for_key
+		
+		mov	[edi + ebx], al
+		and	byte ptr [edi + ebx], 1
 		shr	eax, 1
-		mov	LeftAltDown, al
-		or	LeftAltDown, 1
-		shr	eax, 1
-		mov	RightCtrlDown, al
-		or	RightCtrlDown, 1
-		shr	eax, 1
-		mov	LeftCtrlDown, al
-		or	LeftCtrlDown, 1
-		shr	eax, 1
-		mov	ShiftDown, al
-		or	ShiftDown, 1
-		shr	eax, 1
-		mov	NumLockDown, al
-		or	NumLockDown, 1
-		shr	eax, 1
-		mov	ScrollLockDown, al
-		or	ScrollLockDown, 1
-		shr	eax, 1
-		mov	CapsLockDown, al
-		or	CapsLockDown, 1
-		mov	EscapeDown, 0
+
+		inc	ebx
+		jmp	begin_for_key
+		
+end_for_key:	mov	EscapeDown, 0
 		cmp	word ptr [esi + 4 + 6], VK_ESCAPE	; wVirtualKeyCode
 		jne	end_case
 		mov	EscapeDown, 1
 		jmp	end_case
 
 case_wnd_size:	test	di, WINDOW_BUFFER_SIZE_EVENT
-		jne	end_case
+		jz	end_case
 		mov	ax, [esi + 4]
 		mov	ConsoleSize.X, ax
 		mov	ax, [esi + 6]
@@ -139,24 +134,39 @@ end_case:	inc	cx
 		add	esi, 20
 		jmp	begin_for_event
 
-end_for_event:	xor	ecx, ecx
+end_for_event:	mov	ax, ConsoleSize.X
+		mov	dx, ConsoleSize.Y
+		mul	dx
+		call	FillConsoleOutputCharacter, outputHandle, ' ', eax, HomePos, offset tmp
+
+		xor	ebx, ebx
 		mov	ax, ConsoleSize.Y
 		mov	CursorPosition.Y, ax
 		sub	CursorPosition.Y, 8
 		shr	CursorPosition.Y, 1
+		mov	esi, offset text_array
+		mov	edi, offset key_array
 
-begin_for_write:call	wsprintf, offset messageBuffer, offset fmt
+begin_for_write: mov	ecx, offset text_released
+		mov	al, [edi + ebx]
+		test	al, al
+		jz	not_pressed
+		mov	ecx, offset text_pressed
+not_pressed:	call	wsprintf, offset messageBuffer, offset fmt, dword ptr [esi + ebx * 4], ecx
+		call	strLen, offset messageBuffer
+		mov	messageLen, eax
 		mov	ax, ConsoleSize.X
 		mov	CursorPosition.X, ax
-		call	strLen, offset messageBuffer
+		mov	eax, messageLen
 		sub	CursorPosition.X, ax
 		shr	CursorPosition.X, 1
 
 		call	SetConsoleCursorPosition, outputHandle, CursorPosition
-		call	WriteConsole, outputHandle, offset messageBuffer, ax, offset tmp, 0
+		call	WriteConsole, outputHandle, offset messageBuffer, messageLen, offset tmp, 0
 
 		inc	CursorPosition.Y
-		cmp	ecx, 8
+		inc	ebx
+		cmp	ebx, 8
 		jb	begin_for_write
 
 end_for_write:	jmp	begin_while_esc
