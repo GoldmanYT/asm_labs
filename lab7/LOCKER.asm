@@ -37,7 +37,7 @@ OfsInt16	dw	?		; его смещение
 SegInt16	dw	?		; и сегмент
 
 OK_Text		db	0		; признак гашения экрана
-Sign		db	?		; колличество нажатий Ctrl
+Sign		dw	?		; колличество нажатий Ctrl
 VideoLen	equ	800h		; длина видеобуфера
 
 VideoBuf	db	160 dup(' ')
@@ -59,6 +59,9 @@ AttrBuf		db	VideoLen dup(07h)	; атрибуты экрана
 VideoBeg	dw	0B800h			; адрес начала видеообласти
 VideoOffs	dw	?			; смещение активной страницы
 CurSize		dw	?			; сохраненный размер курсора
+
+password	db	SC_D, SC_A, SC_N, SC_I, SC_I, SC_L
+passwordLen	dw	$ - password
 
 ;------ Р Е З И Д Е Н Т Н Ы Е   П Р О Ц Е Д У Р Ы ---------
 
@@ -107,12 +110,12 @@ Int09Hand	proc
 
 		in	al, 60h		;получить скан код нажатой клавиши
 
-		cmp	al, 26h		;┐проверить на скан-код клавиши
+		cmp	al, SC_L	;┐проверить на скан-код клавиши
 		jne	Exit_09		;┘<L> и выйти, если не он
 
 		xor	ax, ax		;┐
 		mov	es, ax		;│проверить флаги клавиатуры на
-		mov	al, es:[418h]		;│нажатие <Ctrl+Alt>
+		mov	al, es:[418h]	;│нажатие <Ctrl+Alt>
 		and	al, 03h		;│
 		cmp	al, 03h		;│
 		je	Cont		;┘
@@ -140,14 +143,14 @@ InText:		xor	ax, ax		;┐установить сегментный
 
 		mov	ax, es:[44Ch]	;┐сравнить длину видеобуфера
 		cmp	ax, 1000h	;│с 1000h.Если не равно,
-		jne	Exit009		;│то режим EGA Lines
+		jne	Exit009_1	;│то режим EGA Lines
 					;┘(экран тушить не надо)
 		mov	ah, 03h		;┐иначе сохранить
 		int	10h		;│размер курсора
 		mov	CurSize,cx	;┘в CurSize
 
 		mov	ah, 01h		;┐
-		mov	CH, 20h		;│и подавить его
+		mov	ch, 20h		;│и подавить его
 		int	10h		;┘
 
 		mov	OK_Text, 01h	; установить признак гашения
@@ -155,21 +158,35 @@ InText:		xor	ax, ax		;┐установить сегментный
 		call	VideoXcg	; и вызвать процедуру гашения
 
 SwLoop1:	in	al, 60h		; в al - код нажатой клавиши
-		cmp	al, 1Dh		;┐если нажата Ctrl - то на
+		mov	bx, offset Sign
+		add	bx, sign
+		mov	ah, [bx]
+		cmp	al, ah		;┐если нажата клавиша пароля
 		je	SwLoop2		;┘проверку отпускания
-		cmp	al, 9Dh		;┐если была отпущена Ctrl, то
+		mov	bx, offset Sign
+		add	bx, sign
+		mov	ah, [bx]
+		add	ah, 128
+		cmp	al, ah		;┐если была отпущена Ctrl, то
 		je	SwLoop1		;┘дальше на опрос клавиатуры
 		mov	Sign, 0		; иначе сбросить кол-во нажатий
 		jmp	short SwLoop1	; и снова на опрос клавиатуры
 
-SwLoop2:	in	al, 60h		;в al - скан код клавиши
-		cmp	al, 9Dh		;┐если не код отпускания Ctrl, то
+Exit009_1:	jmp	Exit009
+
+SwLoop2:	in	al, 60h		; в al - скан код клавиши
+		mov	bx, offset Sign
+		add	bx, sign
+		mov	ah, [bx]
+		add	ah, 128
+		cmp	al, ah		;┐если не код отпускания Ctrl, то
 		jne	SwLoop2		;┘ожидать отпускания клавиши
-		inc	Sign		;увеличить кол-во нвжатий на Ctrl
-		cmp	Sign, 3		;┐если еще не нажали 3-и раза,то
+		inc	Sign		; увеличить кол-во нажатий на Ctrl
+		mov	ax, passwordLen
+		cmp	Sign, ax	;┐если еще не ввели пароль
 		jne	SwLoop1		;┘перейти на опрос клавиатуры
 
-		mov	Sign,0		;сбросить кол-во нажатий на Ctrl
+		mov	Sign, 0		;сбросить кол-во нажатий на Ctrl
 		
 		cmp	OK_Text,01h	;┐если экран не был выключен,
 		jne	Exit009		;┘то выход
@@ -265,6 +282,103 @@ NotSafeMsg	db	'Ошибка: снять с резидента программу LOCKER'
 		db	' в данный момент',CR,LF,'невозможно из-за '
 		db	'перехвата некоторых векторов',Bell,CR,LF,'$'
 
+SC_Esc		equ	01h
+SC_Enter	equ	1Ch
+SC_Ins		equ	52h
+SC_1		equ	02h
+SC_Ctrl		equ	1Dh
+SC_Alt		equ	38h
+SC_Del		equ	53h
+SC_2		equ	03h
+SC_A		equ	1Eh
+SC_SP		equ	39h
+SC_SysRq	equ	54h
+SC_3		equ	04h
+SC_S		equ	1Fh
+SC_Caps		equ	3Ah
+SC_Macro	equ	56h
+SC_4		equ	05h
+SC_D		equ	20h
+SC_F1		equ	3Bh
+SC_F11		equ	57h
+SC_5		equ	06h
+SC_F		equ	21h
+SC_F2		equ	3Ch
+SC_F12		equ	58h
+SC_6		equ	07h
+SC_G		equ	22h
+SC_F3		equ	3Dh
+SC_PA1		equ	5Ah
+SC_7		equ	08h
+SC_H		equ	23h
+SC_F4		equ	3Eh
+SC_LWin		equ	5Bh
+SC_8		equ	09h
+SC_J		equ	24h
+SC_F5		equ	3Fh
+SC_RWin		equ	5Ch
+SC_9		equ	0Ah
+SC_K		equ	25h
+SC_F6		equ	40h
+SC_Menu		equ	5Dh
+SC_0		equ	0Bh
+SC_L		equ	26h
+SC_F7		equ	41h
+SC_F16		equ	63h
+SC_Dash		equ	0Ch
+SC_Colon	equ	27h
+SC_F8		equ	42h
+SC_F17		equ	64h
+SC_Equals	equ	0Dh
+SC_Quote	equ	28h
+SC_F9		equ	43h
+SC_F18		equ	65h
+SC_BS		equ	0Eh
+SC_DiagonalQuote equ	29h
+SC_F10		equ	44h
+SC_F19		equ	66h
+SC_Tab		equ	0Fh
+SC_LShift	equ	2Ah
+SC_Num		equ	45h
+SC_F20		equ	67h
+SC_Q		equ	10h
+SC_Backslash	equ	2Bh
+SC_Scroll	equ	46h
+SC_F21		equ	68h
+SC_W		equ	11h
+SC_Z		equ	2Ch
+SC_Home		equ	47h
+SC_F22		equ	69h
+SC_E		equ	12h
+SC_X		equ	2Dh
+SC_KP_Minus	equ	48h
+SC_F23		equ	6Ah
+SC_R		equ	13h
+SC_C		equ	3Eh
+SC_PgUp		equ	49h
+SC_F24		equ	6Bh
+SC_T		equ	14h
+SC_V		equ	2Fh
+SC_EraseEOF	equ	6Dh
+SC_Y		equ	15h
+SC_B		equ	30h
+SC_		equ	4Bh
+SC_Copy		equ	6Fh
+SC_U		equ	16h
+SC_N		equ	31h
+SC_K5		equ	4Ch
+SC_CrSel	equ	72h
+SC_I		equ	17h
+SC_M		equ	32h
+SC_Delta	equ	73h
+SC_O		equ	18h
+SC_ExSel	equ	74h
+SC_P		equ	19h
+SC_End		equ	4Fh
+SC_Clear	equ	76h
+SC_RShift	equ	36h
+SC_PgDn		equ	51h
+
 
 ;------ Н Е Р Е З И Д Е Н Т Н Ы Е   П Р О Ц Е Д У Р Ы -----
 
@@ -325,8 +439,7 @@ Vid1:		call	GrabIntVec	; захватить нужные вектора
 		lea	dx,ResEnd	;┐завершить и оставить програм-
 		int	27h		;┘му в резиденте
 
-Uninst:
-		lea	dx,NotInstMsg	;┐если программа не установлена,
+Uninst:		lea	dx,NotInstMsg	;┐если программа не установлена,
 		cmp	InstFlag,Off	;│то вывести сообщение об этом
 		je	Output		;┘
 
@@ -443,5 +556,5 @@ FreeIntVec	proc
 		ret			; возврат
 FreeIntVec	endp
 
-PROGRAM   ends
-          end   Start
+PROGRAM		ends
+		end	Start

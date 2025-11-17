@@ -4,6 +4,8 @@ set debugger=td
 set name=LOCKER
 set folder=lab7
 
+keyb ru 866
+
 %compiler% %folder%\%name%.asm
 pause
 
@@ -13,4 +15,4 @@ pause
 del %name%.obj
 del %name%.map
 
-%name%.com
+%name%.com i
