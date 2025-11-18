@@ -37,7 +37,7 @@ OfsInt16	dw	?		; его смещение
 SegInt16	dw	?		; и сегмент
 
 OK_Text		db	0		; признак гашения экрана
-Sign		dw	?		; колличество нажатий Ctrl
+Sign		dw	?		; номер символа в пароле
 VideoLen	equ	800h		; длина видеобуфера
 
 VideoBuf	db	160 dup(' ')
@@ -46,7 +46,7 @@ VideoBuf	db	160 dup(' ')
 		db	 26 dup(' ')
 		db	'║                                                    ║'
 		db	 26 dup(' ')
-		db	'║   Для разблокировки нажмите три раза LeftControl   ║'
+		db	'║          Для разблокировки введите пароль          ║'
 		db	 26 dup(' ')
 		db	'║                                                    ║'
 		db	 26 dup(' ')
@@ -60,8 +60,8 @@ VideoBeg	dw	0B800h			; адрес начала видеообласти
 VideoOffs	dw	?			; смещение активной страницы
 CurSize		dw	?			; сохраненный размер курсора
 
-password	db	SC_D, SC_A, SC_N, SC_I, SC_I, SC_L
-passwordLen	dw	$ - password
+password	db	SC_D, SC_A, SC_N, SC_I, SC_I, SC_L	; пароль
+passwordLen	dw	$ - password				; длина пароля
 
 ;------ Р Е З И Д Е Н Т Н Ы Е   П Р О Ц Е Д У Р Ы ---------
 
@@ -113,12 +113,17 @@ Int09Hand	proc
 		cmp	al, SC_L	;┐проверить на скан-код клавиши
 		jne	Exit_09		;┘<L> и выйти, если не он
 
-		xor	ax, ax		;┐
-		mov	es, ax		;│проверить флаги клавиатуры на
-		mov	al, es:[418h]	;│нажатие <Ctrl+Alt>
-		and	al, 03h		;│
-		cmp	al, 03h		;│
-		je	Cont		;┘
+		xor	ax, ax							;┐
+		mov	es, ax							;│проверить флаги клавиатуры на
+		mov	ah, es:[417h]						;│нажатие функциональных клавиш
+		mov	al, es:[418h]						;│
+		and	ah, RSHIFT_PRESSED					;│
+		cmp	ah, RSHIFT_PRESSED					;│
+		jne	Exit_09							;│
+		and	al, LCTRL_PRESSED					;│
+		cmp	al, LCTRL_PRESSED					;│
+		jne	Exit_09							;│
+		jmp	Cont							;┘
 
 Exit_09:	jmp	Exit09		; выход
 
@@ -158,14 +163,14 @@ InText:		xor	ax, ax		;┐установить сегментный
 		call	VideoXcg	; и вызвать процедуру гашения
 
 SwLoop1:	in	al, 60h		; в al - код нажатой клавиши
-		mov	bx, offset Sign
-		add	bx, sign
+		mov	bx, offset password
+		add	bx, Sign
 		mov	ah, [bx]
 		cmp	al, ah		;┐если нажата клавиша пароля
 		je	SwLoop2		;┘проверку отпускания
-		mov	bx, offset Sign
-		add	bx, sign
-		mov	ah, [bx]
+		mov	bx, offset password
+		add	bx, Sign
+		mov	ah, [bx - 1]
 		add	ah, 128
 		cmp	al, ah		;┐если была отпущена Ctrl, то
 		je	SwLoop1		;┘дальше на опрос клавиатуры
@@ -175,8 +180,8 @@ SwLoop1:	in	al, 60h		; в al - код нажатой клавиши
 Exit009_1:	jmp	Exit009
 
 SwLoop2:	in	al, 60h		; в al - скан код клавиши
-		mov	bx, offset Sign
-		add	bx, sign
+		mov	bx, offset password
+		add	bx, Sign
 		mov	ah, [bx]
 		add	ah, 128
 		cmp	al, ah		;┐если не код отпускания Ctrl, то
@@ -200,12 +205,12 @@ SwLoop2:	in	al, 60h		; в al - скан код клавиши
 		mov	OK_Text,0h	;сбросить признак гашения экрана
 
 Exit009:	xor	ax,ax		;┐
-		mov	es,ax		;│очистить флаги нажатия
-		mov	al,es:[417h]	;│<Control+Alt> по адресу
-		and	al,11110011b	;│0000h:0417h и флаги
-		mov	es:[417h],al	;│<LeftControl+LeftAlt>
+		mov	es,ax		;│очистить все флаги нажатия
+		mov	al,es:[417h]	;│функциональных клавиш по адресу
+		and	al, 0		;│0000h:0417h и
+		mov	es:[417h],al	;│флаги
 		mov	al,es:[418h]	;│по адресу 0000h:0418h
-		and	al,11111100b	;│
+		and	al, 0		;│
 		mov	es:[418h],al	;┘
 
 		mov	al,20h		;┐обслужить контроллер
@@ -379,6 +384,21 @@ SC_Clear	equ	76h
 SC_RShift	equ	36h
 SC_PgDn		equ	51h
 
+CAPSLOCK_ON	equ	40h	;┐ общие состояния для 
+NUMLOCK_ON	equ	20h	;│ 0000h:0417h и 0000h:0418h
+SCROLLLOCK_ON	equ	10h	;┘
+
+INS_ON		equ	80h	;┐
+ALT_PRESSED	equ	8h	;│
+CTRL_PRESSED	equ	4h	;│ состояния для 
+LSHIFT_PRESSED	equ	2h	;│ 0000h:0417h
+RSHIFT_PRESSED	equ	1h	;┘
+
+SYS_RQ_PRESSED	equ	80h	;┐
+RALT_PRESSED	equ	8h	;│
+RCTRL_PRESSED	equ	4h	;│ состояния для
+LALT_PRESSED	equ	2h	;│ 0000h:0418h
+LCTRL_PRESSED	equ	1h	;┘
 
 ;------ Н Е Р Е З И Д Е Н Т Н Ы Е   П Р О Ц Е Д У Р Ы -----
 
