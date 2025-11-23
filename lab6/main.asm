@@ -37,31 +37,6 @@ FILLDESCR	macro	Seg_Addr, Offset_Addr, Descr
 		mov	&Descr.Base_Top_Byte, ch
 		endm
 
-; Макро для занесения значения регистра reg в строку dest
-fillRegInfo	macro	reg, dest
-		local	cycle, correct
-		pushad
-		
-		std
-		mov	edx, reg
-		mov	ecx, 8
-		lea	edi, dest
-		add	edi, strOffset
-
-cycle:		mov	eax, edx
-		and	eax, 0Fh
-		add	al, '0'
-		cmp	al, '9'
-		jbe	correct
-		add	al, 'A' - '9' - 1
-correct:	stosb
-		shr	edx, 4
-		loop	cycle
-
-		cld
-		popad
-		endm
-
 cseg		SEGMENT Para USE16 public 'code'
 assume		cs: cseg, ds: cseg
 		org	100h
@@ -117,14 +92,9 @@ ex27		Idt_Descriptor<offset ex27_proc,cs_code,0,10000111b,0>
 Int39		Idt_Descriptor<offset int10_proc,cs_code,0,10000110b,0>
 Idt_Leng	equ	$ - Idt			; Длина таблицы IDT
 
-strOffset	dd	15
-eaxInfo		db	'EAX = 0x????????$'
-ebxInfo		db	'EBX = 0x????????$'
-ecxInfo		db	'ECX = 0x????????$'
-edxInfo		db	'EDX = 0x????????$'
-esiInfo		db	'ESI = 0x????????$'
-ediInfo		db	'EDI = 0x????????$'
-cr0Info		db	'CR0 = 0x????????$'
+nameOffset	dd	2
+regOffset	dd	15
+regInfo		db	'REG = 0x????????$'
 
 Len		dw	14
 Gate_Failure	db	'Error open A20$'
@@ -170,9 +140,57 @@ Protect:	mov	ax, Cs_Data
 		mov	ds, ax		; содержат селектор
 		mov	es, ax		; сегмента Cs_Data
 
+		push	es
+		push	Video_Desc
+		pop	es		; ES = Video_Desc
+		mov	dh, 0Fh		; очищаем экран
+		call	Paint_Screen
+		pop	es
+
 		mov	dl, 8		; строка = 8
 		mov	dh, 31		; колонка = 31
-		; mov	dx, 0101h	; координаты левого верхнего угла вывода
+		mov	esi, eax	; тестовое значение
+		mov	ebx, 'EAX'
+		int	27		; Вызов прерывания
+
+		inc	dl		; следующая строка
+		mov	esi, ebx	; тестовое значение
+		mov	ebx, 'EBX'
+		int	27		; Вызов прерывания
+
+		inc	dl		; следующая строка
+		mov	esi, ecx	; тестовое значение
+		mov	ebx, 'ECX'
+		int	27		; Вызов прерывания
+
+		inc	dl		; следующая строка
+		mov	esi, edx	; тестовое значение
+		mov	ebx, 'EDX'
+		int	27		; Вызов прерывания
+
+		inc	dl		; следующая строка
+		mov	esi, 0ABCDEF12h	; тестовое значение
+		mov	ebx, 'ESI'
+		int	27		; Вызов прерывания
+
+		inc	dl		; следующая строка
+		mov	esi, edi	; тестовое значение
+		mov	ebx, 'EDI'
+		int	27		; Вызов прерывания
+
+		inc	dl		; следующая строка
+		mov	esi, esp	; тестовое значение
+		mov	ebx, 'ESP'
+		int	27		; Вызов прерывания
+
+		inc	dl		; следующая строка
+		mov	esi, ebp	; тестовое значение
+		mov	ebx, 'EBP'
+		int	27		; Вызов прерывания
+
+		inc	dl		; следующая строка
+		mov	esi, cr0	; тестовое значение
+		mov	ebx, 'CR0'
 		int	27		; Вызов прерывания
 
 		cli
@@ -220,65 +238,41 @@ ex16_proc:	iret
 ; прерывания в регистрах:
 ; 	DL - строка экрана
 ; 	DH - колонка экрана.
+;	ESI - значение регистра
+;	EBX - имя регистра в формате строки
 ; **************************************************
-ex27_proc:	mov	eax, 0ABCDEF12h
-		fillRegInfo eax, eaxInfo
-		fillRegInfo ebx, ebxInfo
-		fillRegInfo ecx, ecxInfo
-		fillRegInfo edx, edxInfo
-		fillRegInfo esi, esiInfo
-		fillRegInfo edi, ediInfo
-		fillRegInfo cr0, cr0Info
+ex27_proc:	std
+		mov	ecx, 3
+		lea	edi, regInfo
+		add	edi, nameOffset
 
+nameLoop:	mov	eax, ebx
+		and	eax, 0FFh
+		stosb
+		shr	ebx, 8
+		loop	nameLoop
+
+		mov	ecx, 8
+		lea	edi, regInfo
+		add	edi, regOffset
+
+regLoop:	mov	eax, esi
+		and	eax, 0Fh
+		add	al, '0'
+		cmp	al, '9'
+		jbe	isDigit
+		add	al, 'A' - '9' - 1
+isDigit:	stosb
+		shr	esi, 4
+		loop	regLoop
+		cld
+		
+		mov	ax, Cs_Data	; вывод значения регистра
+		mov	ds, ax
+		xor	ebx, ebx
+		lea	bx, regInfo
 		push	es
-		push	Video_Desc
-		pop	es		; ES = Video_Desc
-		push	dx		; сохраняем DX
-		mov	dh, 0Fh		; очищаем экран
-		call	Paint_Screen
-		pop	dx		; восстанавливаем DX
-		
-		mov	ax, Cs_Data	; вывод значения EAX
-		mov	ds, ax
-		lea	bx, eaxInfo
 		int	39
-		
-		inc	dl		; переход к след. строке
-		mov	ax, Cs_Data	; вывод значения EBX
-		mov	ds, ax
-		lea	bx, ebxInfo
-		int	39
-		
-		inc	dl		; переход к след. строке
-		mov	ax, Cs_Data	; вывод значения ECX
-		mov	ds, ax
-		lea	bx, ecxInfo
-		int	39
-		
-		inc	dl		; переход к след. строке
-		mov	ax, Cs_Data	; вывод значения EDX
-		mov	ds, ax
-		lea	bx, edxInfo
-		int	39
-		
-		inc	dl		; переход к след. строке
-		mov	ax, Cs_Data	; вывод значения ESI
-		mov	ds, ax
-		lea	bx, esiInfo
-		int	39
-		
-		inc	dl		; переход к след. строке
-		mov	ax, Cs_Data	; вывод значения EDI
-		mov	ds, ax
-		lea	bx, ediInfo
-		int	39
-		
-		inc	dl		; переход к след. строке
-		mov	ax, Cs_Data	; вывод значения EDI
-		mov	ds, ax
-		lea	bx, cr0Info
-		int	39
-
 		pop	es
 		iret
 
